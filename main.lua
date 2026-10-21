@@ -13,14 +13,15 @@ local collect = ya.sync(function()
 		end
 	end
 
-	for _, u in pairs(cx.yanked) do
-		add(u)
+	-- since yazi v26.8.15, `cx.yanked` and `tab.selected` yield File, not Url
+	for _, f in pairs(cx.yanked) do
+		add(f.url)
 	end
 
 	local tab = cx.active
 	if #tab.selected > 0 then
-		for _, u in pairs(tab.selected) do
-			add(u)
+		for _, f in pairs(tab.selected) do
+			add(f.url)
 		end
 	elseif tab.current.hovered then
 		add(tab.current.hovered.url)
@@ -37,14 +38,18 @@ local function entry(_, job)
 		end
 	end
 
-	local merged = collect()
-	if #merged == 0 then
+	-- `toggle_all` takes File objects; given none it selects the whole CWD
+	local files = {}
+	for _, u in ipairs(collect()) do
+		files[#files + 1] = fs.file(u)
+	end
+	if #files == 0 then
 		return
 	end
 
 	ya.emit("escape", { select = true })
-	merged.state = "on"
-	ya.emit("toggle_all", merged)
+	files.state = "on"
+	ya.emit("toggle_all", files)
 	ya.emit("yank", cut and { cut = true } or {})
 end
 
